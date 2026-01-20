@@ -4,18 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TTPVHCC Tây Thạnh 4.0</title>
-    <meta name="description" content="Trung tâm phục vụ hành chính công Tây Thạnh - Hệ thống AI thông minh">
-    <link rel="icon" type="image/svg+xml" href="/vite.svg">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             background-color: #f1f5f9;
             color: #1a1c1e;
             margin: 0;
@@ -23,30 +15,31 @@
             height: 100vh;
             width: 100vw;
             overflow: hidden;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
         }
-        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-in {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
         /* Ẩn thanh cuộn cho toàn bộ ứng dụng */
         ::-webkit-scrollbar {
             display: none;
         }
-        
         * {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+            box-sizing: border-box;
         }
         
-        /* Root chiếm toàn bộ không gian */
+        /* Đảm bảo root chiếm toàn bộ không gian */
         #root {
             height: 100%;
             width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
         }
-        
-        /* Container chính responsive */
+
+        /* Responsive cho container chính */
         .app-container {
             width: 100%;
             height: 100%;
@@ -54,73 +47,21 @@
             margin: 0 auto;
             background: white;
             position: relative;
-            display: flex;
-            flex-direction: column;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
         }
-        
+
         @media (min-width: 640px) {
             .app-container {
                 height: 92vh;
-                max-height: 900px;
                 border-radius: 3rem;
                 border: 8px solid #0f172a;
                 margin-top: 4vh;
-                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
             }
-        }
-        
-        /* Loading spinner */
-        .loading-spinner {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            gap: 1rem;
-        }
-        
-        .spinner {
-            width: 48px;
-            height: 48px;
-            border: 4px solid #e2e8f0;
-            border-top-color: #3b82f6;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        @keyframes fadeIn {
-            from { 
-                opacity: 0; 
-                transform: translateY(10px); 
-            }
-            to { 
-                opacity: 1; 
-                transform: translateY(0); 
-            }
-        }
-        
-        .animate-in {
-            animation: fadeIn 0.6s ease-out forwards;
-        }
-        
-        .loading-text {
-            color: #64748b;
-            font-size: 0.875rem;
-            font-weight: 500;
         }
     </style>
 </head>
 <body>
-    <div id="root">
-        <div class="loading-spinner">
-            <div class="spinner"></div>
-            <p class="loading-text">Đang tải ứng dụng...</p>
-        </div>
-    </div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/index.tsx"></script>
 </body>
 </html>
