@@ -1,292 +1,288 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI } from '@google/genai';
-import { ArrowLeft, Send, Mic, MicOff, Bot, Loader2, AlertCircle } from 'lucide-react';
+import { Message } from '../types';
+import { geminiService } from '../services/geminiService';
+import { 
+  Send, 
+  ArrowLeft, 
+  Bot, 
+  User, 
+  Loader2, 
+  Sparkles, 
+  X, 
+  Settings, 
+  Cpu, 
+  Ghost, 
+  Smile, 
+  Zap, 
+  CircuitBoard,
+  Copy,
+  Check,
+  Lightbulb,
+  Globe,
+  MessageCircle
+} from 'lucide-react';
 
 interface AIAssistantProps {
   onBack: () => void;
 }
 
-interface Message {
-  role: 'user' | 'model';
-  text: string;
-  timestamp: Date;
+interface AvatarOption {
+  id: string;
+  icon: React.ReactNode;
+  color: string;
+  name: string;
 }
 
+type Language = 'vi' | 'en';
+
+const AVATAR_OPTIONS: AvatarOption[] = [
+  { id: 'classic', icon: <Bot size={20} />, color: 'bg-red-500', name: 'Smart Plus' },
+  { id: 'friendly', icon: <Smile size={20} />, color: 'bg-emerald-500', name: 'Thân thiện' },
+  { id: 'smart', icon: <Cpu size={20} />, color: 'bg-blue-500', name: 'Chuyên gia' },
+  { id: 'dynamic', icon: <Zap size={20} />, color: 'bg-amber-500', name: 'Năng động' },
+  { id: 'tech', icon: <CircuitBoard size={20} />, color: 'bg-indigo-500', name: 'Kỹ thuật' },
+  { id: 'ghost', icon: <Ghost size={20} />, color: 'bg-slate-700', name: 'Tối giản' },
+];
+
+const SUGGESTIONS = {
+  vi: [
+    "Dạ, làm Khai sinh cần gì?",
+    "Thủ tục Đăng ký kết hôn?",
+    "Chứng thực bản sao ở đâu?",
+    "Làm xác nhận độc thân?"
+  ],
+  en: [
+    "Birth registration process?",
+    "Marriage registration?",
+    "Notarization services?",
+    "Marital status certificate?"
+  ]
+};
+
+const UI_TEXT = {
+  vi: {
+    title: 'Trợ lý',
+    placeholder: 'Dạ, ông/bà cần hỏi gì ạ...',
+    thinking: 'AI đang tra cứu quy định...',
+    welcome: 'Kính chào ông/bà! Tôi là Trợ lý ảo AI của UBND Phường Tây Thạnh. Ông/bà cần hướng dẫn về thủ tục hành chính nào (Khai sinh, Kết hôn, Chứng thực...) không ạ?',
+    confirm: 'Xác nhận',
+    personalization: 'Cá nhân hóa AI',
+    error: 'Dạ, thành thật xin lỗi ông/bà, kết nối đang bận. Để được hỗ trợ ngay, kính mời ông/bà nhắn Zalo OA Phường: https://zalo.me/1358120320651896785'
+  },
+  en: {
+    title: 'Assistant',
+    placeholder: 'How can I help you...',
+    thinking: 'AI is looking up regulations...',
+    welcome: 'Welcome! I am the AI Assistant of Tay Thanh Ward. How can I assist you with administrative procedures today?',
+    confirm: 'Confirm',
+    personalization: 'AI Personalization',
+    error: 'Sorry, the connection is busy. Please contact our Zalo OA for support: https://zalo.me/1358120320651896785'
+  }
+};
+
 export const AIAssistant: React.FC<AIAssistantProps> = ({ onBack }) => {
+  const [lang, setLang] = useState<Language>('vi');
   const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'model',
-      text: 'Xin chào! Tôi là trợ lý ảo AI của UBND Phường Tây Thạnh. Tôi có thể giúp bạn:\n\n• Tra cứu thủ tục hành chính\n• Hướng dẫn nộp hồ sơ\n• Kiểm tra trạng thái hồ sơ\n• Đặt lịch hẹn\n• Giải đáp thắc mắc về dịch vụ công\n\nBạn cần hỗ trợ gì hôm nay?',
-      timestamp: new Date()
-    }
+    { role: 'model', text: UI_TEXT['vi'].welcome }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [selectedAvatar, setSelectedAvatar] = useState<AvatarOption>(AVATAR_OPTIONS[0]);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // Khởi tạo Web Speech API
-  useEffect(() => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = 'vi-VN';
-
-      recognitionRef.current.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInput(transcript);
-        setIsListening(false);
-      };
-
-      recognitionRef.current.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setIsListening(false);
-        setError('Không thể nhận diện giọng nói. Vui lòng thử lại.');
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, []);
+  }, [messages, isLoading]);
 
-  const toggleListening = () => {
-    if (!recognitionRef.current) {
-      setError('Trình duyệt không hỗ trợ nhận diện giọng nói');
-      return;
-    }
+  const handleSend = async (customInput?: string) => {
+    const textToSend = customInput || input;
+    if (!textToSend.trim() || isLoading) return;
 
-    if (isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    } else {
-      setError(null);
-      recognitionRef.current.start();
-      setIsListening(true);
-    }
-  };
-
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
-
-    const userMessage: Message = {
-      role: 'user',
-      text: input.trim(),
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
+    const userMsg: Message = { role: 'user', text: textToSend };
+    setMessages(prev => [...prev, userMsg]);
+    if (!customInput) setInput('');
     setIsLoading(true);
-    setError(null);
 
     try {
-      // Kiểm tra API key
-      const apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
-      
-      if (!apiKey) {
-        throw new Error('API_KEY_MISSING');
-      }
-
-      const genAI = new GoogleGenAI(apiKey);
-      const model = genAI.getGenerativeModel({ 
-        model: 'gemini-2.0-flash-exp',
-        systemInstruction: `Bạn là trợ lý ảo AI thông minh của UBND Phường Tây Thạnh, Quận Tân Phú, TP.HCM. 
-
-Nhiệm vụ của bạn:
-- Hỗ trợ người dân về thủ tục hành chính công
-- Hướng dẫn tra cứu, nộp hồ sơ trực tuyến
-- Giải đáp thắc mắc về dịch vụ công
-- Hướng dẫn đặt lịch hẹn
-- Cung cấp thông tin về chính sách, quy định
-
-Phong cách giao tiếp:
-- Thân thiện, nhiệt tình, chuyên nghiệp
-- Trả lời ngắn gọn, dễ hiểu
-- Sử dụng tiếng Việt có dấu
-- Đưa ra hướng dẫn cụ thể, từng bước
-
-Lưu ý:
-- Nếu không chắc chắn, hãy khuyên người dân liên hệ trực tiếp
-- Luôn cung cấp thông tin chính xác về địa chỉ, giờ làm việc
-- Ưu tiên giải pháp trực tuyến, số hóa`
-      });
-
-      // Tạo lịch sử chat cho context
-      const chatHistory = messages.map(msg => ({
-        role: msg.role,
-        parts: [{ text: msg.text }]
-      }));
-
-      const chat = model.startChat({
-        history: chatHistory
-      });
-
-      const result = await chat.sendMessage(userMessage.text);
-      const response = await result.response;
-      const responseText = response.text();
-
-      const aiMessage: Message = {
-        role: 'model',
-        text: responseText,
-        timestamp: new Date()
-      };
-
-      setMessages(prev => [...prev, aiMessage]);
-    } catch (err: any) {
-      console.error('AI Error:', err);
-      
-      let errorMessage = 'Xin lỗi, hệ thống đang bận. Vui lòng thử lại sau ít phút.';
-      
-      if (err.message === 'API_KEY_MISSING') {
-        errorMessage = 'Lỗi cấu hình: Thiếu API key. Vui lòng liên hệ quản trị viên.';
-      } else if (err.message?.includes('quota')) {
-        errorMessage = 'Hệ thống đã hết quota API. Vui lòng thử lại sau hoặc liên hệ bộ phận kỹ thuật.';
-      } else if (err.message?.includes('API key')) {
-        errorMessage = 'API key không hợp lệ. Vui lòng kiểm tra lại cấu hình.';
-      } else if (err.message?.includes('network')) {
-        errorMessage = 'Lỗi kết nối mạng. Vui lòng kiểm tra internet và thử lại.';
-      }
-
-      setError(errorMessage);
-      
-      const errorAIMessage: Message = {
-        role: 'model',
-        text: `⚠️ ${errorMessage}\n\nBạn có thể:\n• Thử lại sau vài phút\n• Liên hệ trực tiếp: (028) 1234 5678\n• Gửi email: taythanh@tpu.hochiminhcity.gov.vn\n• Đến trực tiếp: 123 Đường ABC, Phường Tây Thạnh`,
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, errorAIMessage]);
+      const reply = await geminiService.sendMessage(messages, textToSend);
+      setMessages(prev => [...prev, { role: 'model', text: reply || UI_TEXT[lang].error }]);
+    } catch (error) {
+      setMessages(prev => [...prev, { role: 'model', text: UI_TEXT[lang].error }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+  const formatMessageContent = (text: string) => {
+    return text.split('\n').map((line, index) => {
+      let cleanLine = line.replace(/[*#]/g, '').trim();
+      if (!cleanLine) return <div key={index} className="h-2" />;
+      
+      const isBullet = line.trim().startsWith('-') || line.trim().match(/^\d\./);
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const parts = cleanLine.split(urlRegex);
+
+      return (
+        <div key={index} className={`mb-1 last:mb-0 ${isBullet ? 'pl-3 border-l-2 border-red-500/20 bg-slate-50/50 py-1' : ''}`}>
+          {parts.map((p, i) => urlRegex.test(p) 
+            ? <a key={i} href={p} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-black break-all">{p}</a> 
+            : p
+          )}
+        </div>
+      );
+    });
   };
 
   return (
-    <div className="h-full bg-white flex flex-col">
+    <div className="flex flex-col h-full bg-white relative">
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-gradient-to-r from-red-600 to-red-700 text-white p-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onBack}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 active:scale-90 transition-all"
+      <div className="p-4 border-b flex items-center justify-between bg-red-600 text-white shadow-md z-10">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="p-1 hover:bg-white/10 rounded-full transition-colors">
+            <ArrowLeft size={24} />
+          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowAvatarPicker(true)}
+              className="bg-white p-1.5 rounded-xl text-red-600 shadow-sm transition-transform active:scale-95"
             >
-              <ArrowLeft size={20} />
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <Bot size={22} />
+              <div className={selectedAvatar.color + " p-1 rounded-lg text-white"}>
+                {selectedAvatar.icon}
               </div>
-              <div>
-                <h2 className="font-bold text-base">Trợ lý AI</h2>
-                <p className="text-xs text-white/80">Hỗ trợ 24/7</p>
+            </button>
+            <div>
+              <h3 className="font-bold text-sm leading-tight">{selectedAvatar.name} AI</h3>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+                <p className="text-[9px] text-white/80 font-black uppercase tracking-widest">Trực tuyến 24/7</p>
               </div>
             </div>
           </div>
+        </div>
+        
+        <div className="flex bg-red-700/50 p-1 rounded-xl border border-white/10">
+          <button onClick={() => setLang('vi')} className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all ${lang === 'vi' ? 'bg-white text-red-600 shadow-sm' : 'text-white/60'}`}>VN</button>
+          <button onClick={() => setLang('en')} className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all ${lang === 'en' ? 'bg-white text-red-600 shadow-sm' : 'text-white/60'}`}>EN</button>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
-        {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div
-              className={`max-w-[80%] rounded-2xl p-4 ${
-                msg.role === 'user'
-                  ? 'bg-red-600 text-white rounded-br-sm'
-                  : 'bg-slate-100 text-slate-800 rounded-bl-sm'
-              }`}
-            >
-              <p className="text-sm whitespace-pre-line leading-relaxed">{msg.text}</p>
-              <p className={`text-[10px] mt-2 ${msg.role === 'user' ? 'text-white/70' : 'text-slate-400'}`}>
-                {msg.timestamp.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-              </p>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 no-scrollbar" ref={scrollRef}>
+        {messages.map((m, i) => (
+          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+            <div className={`max-w-[90%] flex gap-2.5 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm mt-1 ${
+                m.role === 'user' ? 'bg-red-500 text-white' : `${selectedAvatar.color} text-white`
+              }`}>
+                {m.role === 'user' ? <User size={16} /> : selectedAvatar.icon}
+              </div>
+              <div className="relative group">
+                <div className={`px-4 py-3 rounded-[20px] text-[13.5px] leading-relaxed shadow-sm ${
+                  m.role === 'user' 
+                    ? 'bg-red-600 text-white rounded-tr-none' 
+                    : 'bg-white border border-slate-100 text-slate-700 rounded-tl-none'
+                }`}>
+                  {formatMessageContent(m.text)}
+                </div>
+                {m.role === 'model' && (
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(m.text);
+                      setCopiedIndex(i);
+                      setTimeout(() => setCopiedIndex(null), 2000);
+                    }}
+                    className="absolute -bottom-6 left-2 p-1 text-slate-400 hover:text-red-600 transition-colors"
+                  >
+                    {copiedIndex === i ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ))}
-        
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-slate-100 rounded-2xl rounded-bl-sm p-4 flex items-center gap-2">
-              <Loader2 size={18} className="animate-spin text-red-600" />
-              <span className="text-sm text-slate-600">Đang suy nghĩ...</span>
+            <div className="flex gap-2.5 items-center">
+              <div className={`w-8 h-8 rounded-lg ${selectedAvatar.color} text-white flex items-center justify-center shadow-sm animate-bounce`}>
+                <Sparkles size={16} />
+              </div>
+              <div className="bg-white px-4 py-2 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{UI_TEXT[lang].thinking}</span>
+                <Loader2 size={12} className="animate-spin text-red-600" />
+              </div>
             </div>
           </div>
         )}
-
-        {error && (
-          <div className="flex justify-center">
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2 max-w-[90%]">
-              <AlertCircle size={18} className="text-red-600 flex-shrink-0" />
-              <p className="text-xs text-red-700">{error}</p>
-            </div>
-          </div>
-        )}
-        
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200">
-        <div className="flex items-end gap-2">
-          <button
-            onClick={toggleListening}
-            className={`w-12 h-12 flex-shrink-0 rounded-xl flex items-center justify-center transition-all ${
-              isListening
-                ? 'bg-red-600 text-white animate-pulse'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-            disabled={isLoading}
-          >
-            {isListening ? <MicOff size={20} /> : <Mic size={20} />}
-          </button>
-          
-          <textarea
+      <div className="p-4 border-t bg-white space-y-3">
+        {messages.length < 5 && !isLoading && (
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {SUGGESTIONS[lang].map((s, idx) => (
+              <button 
+                key={idx}
+                onClick={() => handleSend(s)}
+                className="px-4 py-2 bg-slate-50 border border-slate-100 rounded-full whitespace-nowrap text-[11px] font-bold text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all active:scale-95 shadow-sm"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+        
+        <div className="flex gap-2 bg-slate-100 p-1.5 rounded-[24px] items-center border border-slate-200 focus-within:ring-2 focus-within:ring-red-500/10 focus-within:bg-white transition-all shadow-inner">
+          <input 
+            type="text" 
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Nhập câu hỏi của bạn..."
-            className="flex-1 resize-none rounded-xl border border-slate-200 p-3 text-sm focus:outline-none focus:border-red-600 min-h-[48px] max-h-[120px]"
-            rows={1}
-            disabled={isLoading}
+            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            placeholder={UI_TEXT[lang].placeholder} 
+            className="flex-1 bg-transparent px-4 py-2 text-sm focus:outline-none text-slate-700 font-bold"
           />
-          
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-            className={`w-12 h-12 flex-shrink-0 rounded-xl flex items-center justify-center transition-all ${
-              input.trim() && !isLoading
-                ? 'bg-red-600 text-white hover:bg-red-700 active:scale-90'
-                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-            }`}
+          <button 
+            onClick={() => handleSend()}
+            disabled={isLoading || !input.trim()}
+            className="w-10 h-10 bg-red-600 text-white rounded-full flex items-center justify-center hover:bg-red-700 transition-all disabled:opacity-40 shadow-lg shadow-red-600/20 active:scale-90"
           >
-            {isLoading ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+            <Send size={18} fill="currentColor" />
           </button>
         </div>
       </div>
+
+      {showAvatarPicker && (
+        <div className="absolute inset-0 z-[100] animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowAvatarPicker(false)}></div>
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[32px] p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h4 className="text-lg font-black text-slate-900">{UI_TEXT[lang].personalization}</h4>
+              <button onClick={() => setShowAvatarPicker(false)} className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-full"><X size={18} /></button>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              {AVATAR_OPTIONS.map((opt) => (
+                <button 
+                  key={opt.id}
+                  onClick={() => { setSelectedAvatar(opt); setShowAvatarPicker(false); }}
+                  className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-all border-2 ${selectedAvatar.id === opt.id ? 'border-red-600 bg-red-50' : 'border-slate-50'}`}
+                >
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${opt.color} text-white`}>{opt.icon}</div>
+                  <span className="text-[10px] font-bold text-slate-600">{opt.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none !important; }
+        .no-scrollbar { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+      `}</style>
     </div>
   );
 };
