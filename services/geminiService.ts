@@ -1,6 +1,7 @@
 import { ChatMessage } from '../types';
 
-const API_KEY = import.meta.env.VITE_GROQ_API_KEY || import.meta.env.GEMINI_API_KEY;
+// Lấy API key từ biến môi trường
+const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const API_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
 export interface GeminiResponse {
@@ -21,7 +22,7 @@ export const sendMessageToGemini = async (
   history: ChatMessage[] = []
 ): Promise<string> => {
   if (!API_KEY) {
-    throw new Error('API key chưa được cấu hình. Vui lòng thêm VITE_GROQ_API_KEY vào environment variables.');
+    throw new Error('API key chưa được cấu hình. Vui lòng thêm VITE_GROQ_API_KEY vào environment variables trên Vercel.');
   }
 
   try {
@@ -91,5 +92,12 @@ Phong cách giao tiếp:
     }
     
     throw new Error('Xin lỗi, hệ thống tạm thời không phản hồi. Vui lòng thử lại sau.');
+  }
+};
+
+// Export service object để dễ sử dụng
+export const geminiService = {
+  sendMessage: async (history: ChatMessage[], userInput: string): Promise<string> => {
+    return sendMessageToGemini(userInput, history);
   }
 };
