@@ -9,7 +9,6 @@ const MOCK_PROCEDURES: Procedure[] = [
   { id: '3', title: 'Chứng thực bản sao từ bản chính', category: 'Chứng thực', description: 'Chứng thực các loại giấy tờ, văn bằng từ bản gốc.', estimatedDays: 0, cost: '2,000đ/trang' },
   { id: '4', title: 'Cấp giấy xác nhận tình trạng hôn nhân', category: 'Hộ tịch', description: 'Cấp giấy xác nhận độc thân để sử dụng vào các mục đích pháp lý.', estimatedDays: 3, cost: 'Miễn phí' },
   { id: '5', title: 'Khai báo tạm trú', category: 'Cư trú', description: 'Thông báo lưu trú đối với người từ nơi khác đến.', estimatedDays: 0, cost: 'Miễn phí' },
-  { id: '6', title: 'Hỗ trợ mai táng phí', category: 'Bảo trợ xã hội', description: 'Thủ tục dành cho người có công hoặc đối tượng chính sách.', estimatedDays: 7, cost: 'Miễn phí' },
 ];
 
 const ProcedureList: React.FC = () => {
