@@ -1,103 +1,77 @@
-import { ChatMessage } from '../types';
 
-// Lấy API key từ biến môi trường
-const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const API_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
+import { GoogleGenAI } from "@google/genai";
+import { Message } from "../types";
 
-export interface GeminiResponse {
-  candidates?: Array<{
-    content: {
-      parts: Array<{ text: string }>;
-    };
-  }>;
-  choices?: Array<{
-    message: {
-      content: string;
-    };
-  }>;
+
+const SYSTEM_INSTRUCTION = `BẠN LÀ "TRỢ LÝ AI SMART 4.0 PLUS" - ĐẠI DIỆN SỐ CỦA UBND PHƯỜNG TÂY THẠNH.
+
+NHIỆM VỤ CHÍNH: Hướng dẫn thủ tục hành chính ngắn gọn nhưng đầy đủ từng bước, tập trung vào nộp trực tuyến.
+
+PHONG CÁCH PHẢN HỒI:
+- Ngôn ngữ: Dạ, thưa ông/bà (Lịch sự, chuyên nghiệp).
+- Cấu trúc: Chia rõ các bước 1, 2, 3.
+
+QUY TẮC NỘI DUNG (BẮT BUỘC):
+
+1. HƯỚNG DẪN CHI TIẾT THEO CẤU TRÚC:
+   - 📄 **Hồ sơ cần có**: Liệt kê các giấy tờ cần quét/chụp (Scan).
+   - 💻 **Nộp trực tuyến**: 
+     + Bước 1: Truy cập Cổng DVC Quốc gia (dichvucong.gov.vn) hoặc TP.HCM (dichvucong.hochiminhcity.gov.vn).
+     + Bước 2: Đăng nhập bằng định danh điện tử VNeID.
+     + Bước 3: Tìm tên thủ tục, tải file hồ sơ và ký số/xác nhận.
+   - ⚡ **Tốc độ**: Nêu thời gian xử lý (Ví dụ: 1-3 ngày làm việc).
+   - 🛡️ **Bảo mật**: Cam kết dữ liệu cá nhân được mã hóa và bảo vệ đúng luật.
+
+2. QUY TẮC "ẨN" BỘ MÁY:
+   - Không nhắc đến lãnh đạo hay Phó Giám đốc Trung tâm trừ khi bị hỏi đích danh.
+   - Nếu bị hỏi: Trả lời ngắn gọn rằng đây là chức danh giúp đôn đốc hồ sơ ⚡ NHANH và 🛡️ AN TOÀN.
+
+3. GIỚI HẠN:
+   - Địa chỉ: 200/12 Nguyễn Hữu Tiến, Phường Tây Thạnh.
+   - TUYỆT ĐỐI KHÔNG dùng từ "Quận Tân Phú".
+
+
+CẤU TRÚC PHẢN HỒI:
+Bước 1: Chào hỏi lễ phép.
+Bước 2: Liệt kê danh sách hồ sơ cần có (dùng gạch đầu dòng).
+Bước 3: Hướng dẫn nộp trực tuyến (kèm link: https://dichvucong.hochiminhcity.gov.vn).
+Bước 4: Thông tin thời gian và lệ phí.
+Bước 5: Địa chỉ nhận kết quả: 200/12 Nguyễn Hữu Tiến, Phường Tây Thạnh.
+
+QUY TẮC ĐIỀU HƯỚNG ZALO OA (https://zalo.me/1358120320651896785):
+Chỉ dùng khi:
+- Câu hỏi không liên quan đến hành chính (ví dụ hỏi về thời tiết, giải trí).
+- Câu hỏi vượt thẩm quyền cấp Phường (ví dụ cấp Hộ chiếu, Sổ đỏ lần đầu).
+- Câu hỏi về tranh chấp, kiện tụng phức tạp.
+Khi đó hãy nói: "Dạ, vấn đề này nằm ngoài phạm vi giải đáp tự động hoặc cần sự thẩm định của cán bộ chuyên môn. Để được hỗ trợ chính xác nhất cho trường hợp của ông/bà, kính mời ông/bà nhắn tin trực tiếp qua Zalo OA của Phường tại: https://zalo.me/1358120320651896785 ạ."`;
+
+export class GeminiService {
+  async sendMessage(history: Message[], userInput: string) {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: {
+          parts: [
+            ...history.map(m => ({
+              text: `${m.role === 'model' ? 'Assistant:' : 'User:'} ${m.text}`
+            })),
+            { text: userInput }
+          ]
+        },
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+          temperature: 0.1, // Giữ độ ổn định cao nhất cho thông tin pháp lý
+          topP: 0.8,
+        },
+      });
+
+      return response.text;
+    } catch (error) {
+      console.error("Gemini API Error:", error);
+      throw error;
+    }
+  }
 }
 
-export const sendMessageToGemini = async (
-  userInput: string,
-  history: ChatMessage[] = []
-): Promise<string> => {
-  if (!API_KEY) {
-    throw new Error('API key chưa được cấu hình. Vui lòng thêm VITE_GROQ_API_KEY vào environment variables trên Vercel.');
-  }
-
-  try {
-    const systemPrompt = `Bạn là trợ lý ảo thông minh của Trung tâm Phục vụ Hành chính công Phường Tây Thạnh, Quận Tân Phú, TP.HCM.
-
-Nhiệm vụ:
-- Hỗ trợ người dân tra cứu thủ tục hành chính
-- Hướng dẫn cách nộp hồ sơ online/offline
-- Giải đáp thắc mắc về giấy tờ cần thiết
-- Thông tin thời gian xử lý và lệ phí
-- Luôn lịch sự, chuyên nghiệp và nhiệt tình
-
-Phong cách giao tiếp:
-- Ngắn gọn, rõ ràng, dễ hiểu
-- Sử dụng bullet points khi liệt kê
-- Thân thiện nhưng chuyên nghiệp
-- Luôn kết thúc bằng câu hỏi hỗ trợ thêm`;
-
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      ...history.map(msg => ({
-        role: msg.role === 'model' ? 'assistant' : 'user',
-        content: msg.text
-      })),
-      { role: 'user', content: userInput }
-    ];
-
-    const response = await fetch(API_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 1024,
-        top_p: 0.9
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.error?.message || 
-        `API error: ${response.status} ${response.statusText}`
-      );
-    }
-
-    const data: GeminiResponse = await response.json();
-    
-    if (data.choices && data.choices.length > 0) {
-      return data.choices[0].message.content;
-    }
-
-    throw new Error('Không nhận được phản hồi hợp lệ từ AI');
-    
-  } catch (error) {
-    console.error('Lỗi khi gọi API:', error);
-    
-    if (error instanceof Error) {
-      if (error.message.includes('API key')) {
-        throw error;
-      }
-      throw new Error(`Xin lỗi, đã có lỗi xảy ra: ${error.message}`);
-    }
-    
-    throw new Error('Xin lỗi, hệ thống tạm thời không phản hồi. Vui lòng thử lại sau.');
-  }
-};
-
-// Export service object để dễ sử dụng
-export const geminiService = {
-  sendMessage: async (history: ChatMessage[], userInput: string): Promise<string> => {
-    return sendMessageToGemini(userInput, history);
-  }
-};
+export const geminiService = new GeminiService();
