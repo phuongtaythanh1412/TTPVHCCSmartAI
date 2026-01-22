@@ -16,17 +16,8 @@ const PROCEDURES = [
     hot: true,
     url: 'https://dichvucong.gov.vn/p/home/dvc-chi-tiet-thu-tuc-hanh-chinh.html?ma_thu_tuc=1.001193'
   },
-  { 
+   { 
     id: 2, 
-    name: 'Thực hiện trợ cấp xã hội hàng tháng cho người cao tuổi', 
-    category: 'Bảo trợ xã hội', 
-    time: '7 ngày làm việc', 
-    fee: 'Miễn phí', 
-    hot: true,
-    url: 'https://dichvucong.hochiminhcity.gov.vn/vi/thu-tuc-hanh-chinh/chi-tiet?ma=1.000494.000.00.00.H29'
-  },
-  { 
-    id: 3, 
     name: 'Đăng ký Kết hôn', 
     category: 'Hộ tịch', 
     time: 'Trong ngày', 
@@ -34,16 +25,7 @@ const PROCEDURES = [
     hot: false,
     url: 'https://dichvucong.gov.vn/p/home/dvc-chi-tiet-thu-tuc-dung-chung.html?ma_thu_tuc=1.000894'
   },
-  { 
-    id: 4, 
-    name: 'Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội', 
-    category: 'Bảo trợ xã hội', 
-    time: '3 ngày làm việc', 
-    fee: 'Miễn phí', 
-    hot: false,
-    url: 'https://dichvucong.hochiminhcity.gov.vn/vi/thu-tuc-hanh-chinh/chi-tiet?ma=1.000497.000.00.00.H29'
-  },
-  { id: 5, name: 'Chứng thực bản sao từ bản chính các giấy tờ, văn bản', category: 'Chứng thực', time: '1 giờ', fee: '2.000đ/trang', hot: true, url: 'https://dichvucong.gov.vn/p/home/dvc-danh-sach-dich-vu-cong.html?tu_khoa=&bo_nganh=&tinh_thanh=Th%C3%A0nh%20ph%E1%BB%91%20H%E1%BB%93%20Ch%C3%AD%20Minh&so=&quan_huyen=Ph%C6%B0%E1%BB%9Dng%20T%C3%A2y%20Th%E1%BA%A1nh&phuong_xa=&ma_tt=2.000815&id_tinh_thanh=13460&id_quan_huyen=22024&id_phuong_xa=undefined&id_so=null&id_bo_nganh=-1' },
+   { id: 3, name: 'Chứng thực bản sao từ bản chính các giấy tờ, văn bản', category: 'Chứng thực', time: '1 giờ', fee: '2.000đ/trang', hot: true, url: 'https://dichvucong.gov.vn/p/home/dvc-danh-sach-dich-vu-cong.html?tu_khoa=&bo_nganh=&tinh_thanh=Th%C3%A0nh%20ph%E1%BB%91%20H%E1%BB%93%20Ch%C3%AD%20Minh&so=&quan_huyen=Ph%C6%B0%E1%BB%9Dng%20T%C3%A2y%20Th%E1%BA%A1nh&phuong_xa=&ma_tt=2.000815&id_tinh_thanh=13460&id_quan_huyen=22024&id_phuong_xa=undefined&id_so=null&id_bo_nganh=-1' },
 ];
 
 export const SubmissionView: React.FC<SubmissionViewProps> = ({ onBack }) => {
